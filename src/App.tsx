@@ -36,7 +36,7 @@ const NFT_CONTRACT_ABI = [
 
 const NFT_CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x7eE7e02aB3C684bBF4935859dca1b3Bc07cD890B";
-const CHECKIN_API_URL = "http://localhost:8080/api/check-in-data";
+const CHECKIN_API_URL = "https://checkin.saigo.dev/api/check-in-data";
 
 const DAILY_CHECKIN_ABI = [
   {
