@@ -3,6 +3,7 @@ export default {
     title: 'SAIGO Genesis NFT',
     checkIn: 'Check In',
     alreadyCheckedIn: 'Checked In',
+    checkingIn: 'Checking In...',
     connectWallet: 'Connect Wallet'
   },
   nft: {
@@ -11,7 +12,21 @@ export default {
       firstCheckIn: 'First check-in lights up S',
       secondCheckIn: 'Second check-in lights up AI',
       thirdCheckIn: 'Third check-in lights up GO',
-      completed: 'All letters lit up!'
+      completed: 'All letters lit up!',
+      checkInPeriodInactive: 'Check-in period is not active',
+      wrongNetwork: 'Please switch to BSC Testnet to check in',
+      connectWalletFirst: 'Connect wallet to check in'
+    },
+    checkIn: {
+      title: 'Daily Check-in',
+      status: 'Today\'s Status',
+      available: 'Available',
+      unavailable: 'Unavailable',
+      periodInactive: 'Period Inactive',
+      progress: 'Progress',
+      lastCheckIn: 'Last Check-in',
+      network: 'Network',
+      wrongNetwork: 'Wrong Network'
     },
     details: {
       title: 'Project Details',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserProvider, Contract, parseEther } from 'ethers';
+import { BrowserProvider, Contract, parseEther, Signer } from 'ethers';
 import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, Languages } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -35,17 +35,93 @@ const NFT_CONTRACT_ABI = [
 ];
 
 const NFT_CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x7eE7e02aB3C684bBF4935859dca1b3Bc07cD890B";
+const CHECKIN_API_URL = "http://localhost:8080/api/check-in-data";
 
+const DAILY_CHECKIN_ABI = [
+  {
+    "inputs": [
+      {"name": "_ipAddress", "type": "string"},
+      {"name": "_timestamp", "type": "uint256"},
+      {"name": "_signature", "type": "bytes"}
+    ],
+    "name": "checkIn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"name": "_ipAddress", "type": "string"},
+      {"name": "_timestamp", "type": "uint256"},
+      {"name": "_signature", "type": "bytes"}
+    ],
+    "name": "testCheckIn",
+    "outputs": [
+      {"name": "errorCode", "type": "uint8"},
+      {"name": "errorMessage", "type": "string"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "_user", "type": "address"}],
+    "name": "getUserCheckInStatus",
+    "outputs": [
+      {"name": "lastCheckIn", "type": "uint256"},
+      {"name": "totalCheckIns", "type": "uint256"},
+      {"name": "hasCheckedInToday", "type": "bool"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "_user", "type": "address"}],
+    "name": "getUserCheckInDays",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "_user", "type": "address"}],
+    "name": "hasCheckedInToday",
+    "outputs": [{"name": "", "type": "bool"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isCheckInPeriodActive",
+    "outputs": [{"name": "", "type": "bool"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+//  主网
+// const BSC_NETWORK = {
+//   chainId: '0x38',
+//   chainName: 'BNB Smart Chain',
+//   nativeCurrency: {
+//     name: 'BNB',
+//     symbol: 'BNB',
+//     decimals: 18
+//   },
+//   rpcUrls: ['https://bsc-dataseed.binance.org/'],
+//   blockExplorerUrls: ['https://bscscan.com']
+// };
+
+// 测试网
 const BSC_NETWORK = {
-  chainId: '0x38',
-  chainName: 'BNB Smart Chain',
+  chainId: '0x61',
+  chainName: 'BNB Smart Chain Testnet',
   nativeCurrency: {
     name: 'BNB',
     symbol: 'BNB',
     decimals: 18
   },
-  rpcUrls: ['https://bsc-dataseed.binance.org/'],
-  blockExplorerUrls: ['https://bscscan.com']
+  rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+  blockExplorerUrls: ['https://testnet.bscscan.com']
 };
 
 function App() {
@@ -63,6 +139,9 @@ function App() {
   const [hasMinted, setHasMinted] = useState(false);
   const [consecutiveCheckins, setConsecutiveCheckins] = useState(0);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [checkInPeriodActive, setCheckInPeriodActive] = useState(false);
+  const [checkInError, setCheckInError] = useState<string | null>(null);
 
   useEffect(() => {
     checkConnection();
@@ -84,14 +163,15 @@ function App() {
 
   useEffect(() => {
     if (isConnected && address) {
+      console.log('Connected wallet changed, checking contract status...');
       checkContractAndUpdateStatus();
+      checkCheckInStatus();
     }
   }, [isConnected, address, currentNetwork]);
 
   const loadCheckInStatus = () => {
-    const storedCheckins = localStorage.getItem('consecutive_checkins');
-    if (storedCheckins) {
-      setConsecutiveCheckins(parseInt(storedCheckins));
+    if (!isConnected) {
+      setConsecutiveCheckins(0);
     }
   };
 
@@ -100,98 +180,158 @@ function App() {
 
     try {
       const provider = new BrowserProvider(window.ethereum);
-      const code = await provider.getCode(NFT_CONTRACT_ADDRESS);
+      const network = await provider.getNetwork();
+      const chainIdHex = '0x' + network.chainId.toString(16);
+      setCurrentNetwork(chainIdHex);
       
-      if (code === '0x' || code === '') {
+      // Only check NFT contract status if we're on the correct network
+      if (chainIdHex === BSC_NETWORK.chainId) {
+        try {
+          const signer = await provider.getSigner();
+          const nftContract = new Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
+          
+          setIsContractAvailable(true);
+          
+          const isWhitelistedResult = await nftContract.isWhitelisted(address);
+          setIsWhitelisted(isWhitelistedResult);
+          
+          const hasMintedResult = await nftContract.hasMinted(address);
+          setHasMinted(hasMintedResult);
+          
+          const balanceResult = await nftContract.balanceOf(address);
+          setNftBalance(Number(balanceResult));
+        } catch (contractError) {
+          console.error('NFT contract error:', contractError);
+          setIsContractAvailable(false);
+        }
+      } else {
         setIsContractAvailable(false);
-        setNftBalance(0);
-        setError(t('nft.errors.notDeployed'));
+      }
+    } catch (error) {
+      console.error('Connection check failed:', error);
+      setError(t('nft.errors.connection'));
+    }
+  };
+
+  const checkCheckInStatus = async () => {
+    if (!window.ethereum || !address) return;
+    
+    try {
+      const provider = new BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      const chainIdHex = '0x' + network.chainId.toString(16);
+      
+      if (chainIdHex !== BSC_NETWORK.chainId) {
+        console.log('Not on BSC testnet, skipping contract calls');
+        setCheckInPeriodActive(false);
+        setCanCheckIn(false);
         return;
       }
-
-      setIsContractAvailable(true);
-      const contract = new Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, provider);
       
-      const [balance, whitelist, minted] = await Promise.all([
-        contract.balanceOf(address),
-        contract.isWhitelisted(address),
-        contract.hasMinted(address)
-      ]);
-
-      setNftBalance(Number(balance));
-      setIsWhitelisted(whitelist);
-      setHasMinted(minted);
-      setError(null);
+      try {
+        const signer = await provider.getSigner();
+        const checkInContract = new Contract(DAILY_CHECKIN_CONTRACT_ADDRESS, DAILY_CHECKIN_ABI, signer);
+        
+        // Check if check-in period is active
+        const isActive = await checkInContract.isCheckInPeriodActive();
+        console.log('Check-in period active:', isActive);
+        setCheckInPeriodActive(isActive);
+        
+        if (isActive) {
+          // Check if user has already checked in today
+          const hasCheckedIn = await checkInContract.hasCheckedInToday(address);
+          console.log('Has checked in today:', hasCheckedIn);
+          setCanCheckIn(!hasCheckedIn);
+          
+          // Get user's check-in status
+          const [lastCheckInTime, totalCheckIns, hasCheckedInToday] = await checkInContract.getUserCheckInStatus(address);
+          console.log('User check-in status:', {
+            lastCheckInTime: Number(lastCheckInTime),
+            totalCheckIns: Number(totalCheckIns),
+            hasCheckedInToday
+          });
+          
+          if (lastCheckInTime > 0) {
+            const date = new Date(Number(lastCheckInTime) * 1000);
+            setLastCheckIn(date.toLocaleString());
+            setConsecutiveCheckins(Number(totalCheckIns) > 3 ? 3 : Number(totalCheckIns));
+          }
+        } else {
+          setCanCheckIn(false);
+        }
+      } catch (contractError) {
+        console.error('Contract call error:', contractError);
+        // Reset values on error
+        setCheckInPeriodActive(false);
+        setCanCheckIn(false);
+        setConsecutiveCheckins(0);
+      }
     } catch (error) {
-      console.error('Error checking contract:', error);
-      setIsContractAvailable(false);
-      setNftBalance(0);
-      setError(t('nft.errors.contract'));
+      console.error('Failed to check check-in status:', error);
+      setCheckInError('Failed to check check-in status');
+      // Reset values on error
+      setConsecutiveCheckins(0);
     }
   };
 
   const handleChainChanged = (chainId: string) => {
-    setCurrentNetwork(chainId);
     window.location.reload();
   };
 
   const switchToBSC = async () => {
     if (!window.ethereum) return;
-
+    
     try {
+      // Try to switch to BSC testnet
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
         params: [{ chainId: BSC_NETWORK.chainId }],
       });
     } catch (switchError: any) {
+      // This error code indicates that the chain has not been added to MetaMask.
       if (switchError.code === 4902) {
         try {
           await window.ethereum.request({
             method: 'wallet_addEthereumChain',
-            params: [BSC_NETWORK],
+            params: [
+              {
+                chainId: BSC_NETWORK.chainId,
+                chainName: BSC_NETWORK.chainName,
+                nativeCurrency: BSC_NETWORK.nativeCurrency,
+                rpcUrls: BSC_NETWORK.rpcUrls,
+                blockExplorerUrls: BSC_NETWORK.blockExplorerUrls
+              },
+            ],
           });
         } catch (addError) {
           console.error('Error adding BSC network:', addError);
           setError(t('nft.errors.addNetwork'));
         }
       } else {
-        console.error('Error switching to BSC:', switchError);
+        console.error('Error switching to BSC network:', switchError);
         setError(t('nft.errors.networkSwitch'));
       }
     }
   };
 
-  const checkCanCheckIn = (address: string) => {
-    const stored = localStorage.getItem(`checkin_${address}`);
-    if (stored) {
-      const lastDate = new Date(stored);
-      const today = new Date();
-      return (
-        lastDate.getDate() !== today.getDate() ||
-        lastDate.getMonth() !== today.getMonth() ||
-        lastDate.getFullYear() !== today.getFullYear()
-      );
-    }
-    return true;
-  };
-
   const handleAccountsChanged = (accounts: string[]) => {
     if (accounts.length === 0) {
+      // Disconnected
       handleDisconnect();
     } else {
       const newAddress = accounts[0];
-      setAddress(newAddress);
-      setIsConnected(true);
-      
-      const stored = localStorage.getItem(`checkin_${newAddress}`);
-      if (stored) {
-        setLastCheckIn(stored);
-        setCanCheckIn(checkCanCheckIn(newAddress));
-      } else {
-        setLastCheckIn(null);
-        setCanCheckIn(true);
+      if (address && newAddress !== address) {
+        // Address changed
+        setAddress(newAddress);
+        checkContractAndUpdateStatus();
+        checkCheckInStatus();
+      } else if (!address) {
+        // New connection
+        setIsConnected(true);
+        setAddress(newAddress);
+        checkContractAndUpdateStatus();
+        checkCheckInStatus();
       }
-      checkContractAndUpdateStatus();
     }
   };
 
@@ -222,7 +362,7 @@ function App() {
           const stored = localStorage.getItem(`checkin_${currentAddress}`);
           if (stored) {
             setLastCheckIn(stored);
-            setCanCheckIn(checkCanCheckIn(currentAddress));
+            setCanCheckIn(true);
           }
           checkContractAndUpdateStatus();
         }
@@ -244,12 +384,8 @@ function App() {
         setIsConnected(true);
         setAddress(newAddress);
         
-        const stored = localStorage.getItem(`checkin_${newAddress}`);
-        if (stored) {
-          setLastCheckIn(stored);
-          setCanCheckIn(checkCanCheckIn(newAddress));
-        }
         checkContractAndUpdateStatus();
+        checkCheckInStatus();
       } catch (error) {
         console.error('Error connecting wallet:', error);
         setError(t('nft.errors.walletConnect'));
@@ -263,34 +399,173 @@ function App() {
     handleDisconnect();
   };
 
-  const handleCheckIn = () => {
-    if (address && canCheckIn) {
-      const now = new Date().toLocaleString();
-      localStorage.setItem(`checkin_${address}`, now);
-      setLastCheckIn(now);
-      setCanCheckIn(false);
-
-      const lastCheckInDate = localStorage.getItem('last_checkin_date');
-      const today = new Date().toDateString();
-
-      if (lastCheckInDate) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        if (lastCheckInDate === yesterday.toDateString()) {
-          const newCount = Math.min(consecutiveCheckins + 1, 3);
-          setConsecutiveCheckins(newCount);
-          localStorage.setItem('consecutive_checkins', newCount.toString());
-        } else if (lastCheckInDate !== today) {
-          setConsecutiveCheckins(1);
-          localStorage.setItem('consecutive_checkins', '1');
+  const handleCheckIn = async () => {
+    if (!address) return;
+    
+    setIsCheckingIn(true);
+    setCheckInError(null);
+    
+    try {
+      // Check if we're on the correct network
+      const provider = new BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      const chainIdHex = '0x' + network.chainId.toString(16);
+      
+      if (chainIdHex !== BSC_NETWORK.chainId) {
+        // Try to switch to BSC testnet
+        await switchToBSC();
+        // Check again after switching
+        const newNetwork = await provider.getNetwork();
+        const newChainIdHex = '0x' + newNetwork.chainId.toString(16);
+        if (newChainIdHex !== BSC_NETWORK.chainId) {
+          throw new Error('Failed to switch to BSC testnet');
         }
-      } else {
-        setConsecutiveCheckins(1);
-        localStorage.setItem('consecutive_checkins', '1');
       }
-
-      localStorage.setItem('last_checkin_date', today);
+      
+      // Check contract state first
+      const signer = await provider.getSigner();
+      const checkInContract = new Contract(DAILY_CHECKIN_CONTRACT_ADDRESS, DAILY_CHECKIN_ABI, signer);
+      
+      // Check if check-in period is active
+      const isActive = await checkInContract.isCheckInPeriodActive();
+      if (!isActive) {
+        throw new Error('Check-in period is not active');
+      }
+      
+      // Check if user has already checked in today
+      const hasCheckedIn = await checkInContract.hasCheckedInToday(address);
+      if (hasCheckedIn) {
+        throw new Error('Already checked in today');
+      }
+      
+      // Get signature from the server with a fresh request
+      const signatureUrl = `${CHECKIN_API_URL}?address=${address}`;
+      
+      console.log('Fetching signature from:', signatureUrl);
+      const response = await fetch(signatureUrl);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get signature from server: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Signature data:', data);
+      
+      if (!data.signature || !data.ipAddress || !data.timestamp) {
+        throw new Error('Invalid signature received from server');
+      }
+      
+      // Ensure the timestamp is recent
+      const currentTime = Math.floor(Date.now() / 1000);
+      const signatureTime = Number(data.timestamp);
+      const timeDiff = Math.abs(currentTime - signatureTime);
+      
+      console.log('Time difference (seconds):', timeDiff);
+      
+      if (timeDiff > 300) { // 5 minutes
+        throw new Error('Signature timestamp is too old. Please try again.');
+      }
+      
+      // Format the parameters correctly
+      const ipAddress = String(data.ipAddress);
+      const timestamp = BigInt(data.timestamp);
+      
+      // Ensure signature has 0x prefix
+      let signature = data.signature;
+      if (!signature.startsWith('0x')) {
+        signature = '0x' + signature;
+      }
+      
+      // Hex decode the signature
+      // First remove 0x prefix if present
+      let signatureHex = signature;
+      if (signatureHex.startsWith('0x')) {
+        signatureHex = signatureHex.slice(2);
+      }
+      
+      // Convert hex string to byte array
+      const signatureBytes = new Uint8Array(signatureHex.match(/.{1,2}/g)?.map((byte: string) => parseInt(byte, 16)) || []);
+      
+      console.log('Original signature:', signature);
+      console.log('Hex decoded signature bytes length:', signatureBytes.length);
+      
+      console.log('Calling contract with parameters:', {
+        ipAddress,
+        timestamp: timestamp.toString(),
+        signatureBytes
+      });
+      
+      // First test the check-in to get detailed error information
+      console.log('Testing check-in before actual submission...');
+      try {
+        const testResult = await checkInContract.testCheckIn(
+          ipAddress,
+          timestamp.toString(),
+          signatureBytes
+        );
+        
+        const errorCode = Number(testResult.errorCode);
+        const errorMessage = testResult.errorMessage;
+        
+        console.log('Test check-in result:', {
+          errorCode,
+          errorMessage
+        });
+        
+        // If there's an error, throw it to be caught by the outer catch block
+        if (errorCode !== 0) {
+          throw new Error(`Check-in would fail: ${errorMessage} (Error code: ${errorCode})`);
+        }
+        
+        console.log('Test check-in successful, proceeding with actual check-in');
+      } catch (testError: any) {
+        console.error('Test check-in failed:', testError);
+        throw new Error(`Test check-in failed: ${testError.message}`);
+      }
+      
+      // Set a high gas limit to ensure the transaction goes through
+      const gasLimit = 1000000;
+      
+      // Call the contract with hex decoded signature
+      const tx = await checkInContract.checkIn(
+        ipAddress,
+        timestamp,
+        signatureBytes,
+        { gasLimit }
+      );
+      
+      console.log('Transaction sent:', tx.hash);
+      
+      // Wait for transaction to be mined
+      console.log('Waiting for transaction confirmation...');
+      const receipt = await tx.wait();
+      console.log('Transaction confirmed:', receipt);
+      
+      // Update UI
+      setCanCheckIn(false);
+      const now = new Date().toLocaleString();
+      setLastCheckIn(now);
+      
+      // Update check-in status from contract
+      await checkCheckInStatus();
+    } catch (error: any) {
+      console.error('Check-in failed:', error);
+      
+      // Provide a more helpful error message
+      let errorMessage = error.message || 'Unknown error';
+      
+      // Check if this is a detailed error from testCheckIn
+      if (errorMessage.includes('Check-in would fail:') || errorMessage.includes('Test check-in failed:')) {
+        // Already a detailed message, use it as is
+        setCheckInError(`${errorMessage}`);
+      } else if (errorMessage.includes('execution reverted')) {
+        errorMessage = 'Contract execution failed. This may be due to an invalid signature or the contract rejecting the check-in. Please try again later or contact support.';
+        setCheckInError(`Check-in failed: ${errorMessage}`);
+      } else {
+        setCheckInError(`Check-in failed: ${errorMessage}`);
+      }
+    } finally {
+      setIsCheckingIn(false);
     }
   };
 
@@ -337,24 +612,55 @@ function App() {
   const canMint = !hasMinted && isContractAvailable && isCorrectNetwork;
 
   const NFTPreview = () => {
+    const displayConsecutiveCheckins = isConnected ? consecutiveCheckins : 0;
+    
     return (
       <div className="bg-[#0a0a0a] rounded-2xl overflow-hidden border border-[#1d1d1d] p-8">
-        <div className="flex flex-col items-center justify-center min-h-[400px] gap-8">
-          <div className="text-6xl md:text-8xl font-bold tracking-widest">
-            <span className={`transition-all duration-500 ${consecutiveCheckins >= 1 ? 'text-blue-400' : 'text-gray-800'}`}>S</span>
-            <span className={`transition-all duration-500 ${consecutiveCheckins >= 2 ? 'text-blue-400' : 'text-gray-800'}`}>A</span>
-            <span className={`transition-all duration-500 ${consecutiveCheckins >= 2 ? 'text-blue-400' : 'text-gray-800'}`}>I</span>
-            <span className={`transition-all duration-500 ${consecutiveCheckins >= 3 ? 'text-blue-400' : 'text-gray-800'}`}>G</span>
-            <span className={`transition-all duration-500 ${consecutiveCheckins >= 3 ? 'text-blue-400' : 'text-gray-800'}`}>O</span>
+        <div className="flex flex-col items-center justify-center min-h-[280px] gap-6">
+          <div className="text-5xl md:text-7xl font-bold tracking-widest">
+            <span className={`transition-all duration-500 ${displayConsecutiveCheckins >= 1 ? 'text-blue-400' : 'text-gray-800'}`}>S</span>
+            <span className={`transition-all duration-500 ${displayConsecutiveCheckins >= 2 ? 'text-blue-400' : 'text-gray-800'}`}>A</span>
+            <span className={`transition-all duration-500 ${displayConsecutiveCheckins >= 2 ? 'text-blue-400' : 'text-gray-800'}`}>I</span>
+            <span className={`transition-all duration-500 ${displayConsecutiveCheckins >= 3 ? 'text-blue-400' : 'text-gray-800'}`}>G</span>
+            <span className={`transition-all duration-500 ${displayConsecutiveCheckins >= 3 ? 'text-blue-400' : 'text-gray-800'}`}>O</span>
           </div>
           <div className="text-center text-gray-400">
-            <p className="mb-2">{t('nft.preview.progress', { count: consecutiveCheckins })}</p>
+            <p className="mb-2">{t('nft.preview.progress', { count: displayConsecutiveCheckins })}</p>
             <p className="text-sm">
-              {consecutiveCheckins === 0 && t('nft.preview.firstCheckIn')}
-              {consecutiveCheckins === 1 && t('nft.preview.secondCheckIn')}
-              {consecutiveCheckins === 2 && t('nft.preview.thirdCheckIn')}
-              {consecutiveCheckins === 3 && t('nft.preview.completed')}
+              {!isConnected && t('nft.preview.connectWalletFirst')}
+              {isConnected && displayConsecutiveCheckins === 0 && t('nft.preview.firstCheckIn')}
+              {isConnected && displayConsecutiveCheckins === 1 && t('nft.preview.secondCheckIn')}
+              {isConnected && displayConsecutiveCheckins === 2 && t('nft.preview.thirdCheckIn')}
+              {isConnected && displayConsecutiveCheckins === 3 && t('nft.preview.completed')}
             </p>
+            {lastCheckIn && (
+              <p className="mt-2 text-xs text-gray-500">
+                {t('nft.mint.lastCheckIn', { time: lastCheckIn })}
+              </p>
+            )}
+            {checkInError && (
+              <p className="mt-2 text-xs text-red-500">
+                {checkInError}
+              </p>
+            )}
+            {!checkInPeriodActive && isConnected && (
+              <p className="mt-2 text-xs text-yellow-500">
+                {t('nft.preview.checkInPeriodInactive')}
+              </p>
+            )}
+            {isConnected && currentNetwork !== BSC_NETWORK.chainId && (
+              <div className="mt-4">
+                <p className="text-xs text-yellow-500 mb-2">
+                  {t('nft.preview.wrongNetwork')}
+                </p>
+                <button
+                  onClick={switchToBSC}
+                  className="px-3 py-1.5 rounded-full text-xs bg-[#0ea5e9] hover:bg-[#0284c7] text-white transition-colors"
+                >
+                  {t('nft.mint.switchButton')}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -393,22 +699,6 @@ function App() {
                 </div>
               )}
             </div>
-            {isConnected && (
-              <button
-                onClick={handleCheckIn}
-                disabled={!canCheckIn}
-                className={`px-3 py-1.5 rounded-full text-sm flex items-center gap-1.5 transition-colors ${
-                  canCheckIn
-                    ? 'bg-[#0ea5e9] hover:bg-[#0284c7] text-white'
-                    : 'bg-[#1d1d1d] text-gray-500 cursor-not-allowed'
-                }`}
-              >
-                <CheckCircle className="w-4 h-4" />
-                <span className="hidden md:inline">
-                  {canCheckIn ? t('header.checkIn') : t('header.alreadyCheckedIn')}
-                </span>
-              </button>
-            )}
             {isConnected ? (
               <div className="flex items-center gap-2">
                 <span className="text-[#94a3b8] hidden md:inline">{formatAddress(address)}</span>
@@ -436,6 +726,71 @@ function App() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
           <div className="space-y-6">
             <NFTPreview />
+            
+            {isConnected && (
+              <div className="bg-[#0a0a0a] rounded-2xl p-6 space-y-4 border border-[#1d1d1d]">
+                <h3 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                  {t('nft.checkIn.title')}
+                </h3>
+                <div className="space-y-2 text-[#94a3b8]">
+                  <div className="flex justify-between items-center">
+                    <span>{t('nft.checkIn.status')}</span>
+                    <span className={`px-2 py-1 rounded-full text-xs ${canCheckIn && checkInPeriodActive ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                      {!checkInPeriodActive 
+                        ? t('nft.checkIn.periodInactive')
+                        : canCheckIn 
+                          ? t('nft.checkIn.available') 
+                          : t('nft.checkIn.unavailable')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span>{t('nft.checkIn.progress')}</span>
+                    <span>{consecutiveCheckins}/3</span>
+                  </div>
+                  {lastCheckIn && (
+                    <div className="flex justify-between items-center">
+                      <span>{t('nft.checkIn.lastCheckIn')}</span>
+                      <span>{lastCheckIn}</span>
+                    </div>
+                  )}
+                  {currentNetwork !== BSC_NETWORK.chainId && (
+                    <div className="flex justify-between items-center text-yellow-500">
+                      <span>{t('nft.checkIn.network')}</span>
+                      <span>{t('nft.checkIn.wrongNetwork')}</span>
+                    </div>
+                  )}
+                  <div className="pt-2">
+                    <button
+                      onClick={handleCheckIn}
+                      disabled={!canCheckIn || isCheckingIn || currentNetwork !== BSC_NETWORK.chainId || !checkInPeriodActive}
+                      className={`w-full py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${
+                        canCheckIn && !isCheckingIn && currentNetwork === BSC_NETWORK.chainId && checkInPeriodActive
+                          ? 'bg-[#0ea5e9] hover:bg-[#0284c7] text-white'
+                          : 'bg-[#1d1d1d] text-gray-500 cursor-not-allowed'
+                      }`}
+                    >
+                      {isCheckingIn ? (
+                        <div className="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>
+                      ) : (
+                        <CheckCircle className="w-5 h-5" />
+                      )}
+                      <span>
+                        {isCheckingIn 
+                          ? t('header.checkingIn') 
+                          : !checkInPeriodActive
+                            ? t('nft.checkIn.periodInactive')
+                            : currentNetwork !== BSC_NETWORK.chainId
+                              ? t('nft.preview.wrongNetwork')
+                              : canCheckIn 
+                                ? t('header.checkIn') 
+                                : t('header.alreadyCheckedIn')}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="bg-[#0a0a0a] rounded-2xl p-6 space-y-4 border border-[#1d1d1d]">
               <h3 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
                 {t('nft.details.title')}

@@ -3,6 +3,7 @@ export default {
     title: 'SAIGO 创世 NFT',
     checkIn: '签到',
     alreadyCheckedIn: '已签到',
+    checkingIn: '签到中...',
     connectWallet: '连接钱包'
   },
   nft: {
@@ -11,7 +12,21 @@ export default {
       firstCheckIn: '首次签到点亮 S',
       secondCheckIn: '第二次签到点亮 AI',
       thirdCheckIn: '第三次签到点亮 GO',
-      completed: '已全部点亮！'
+      completed: '已全部点亮！',
+      checkInPeriodInactive: '签到活动未开始',
+      wrongNetwork: '请切换到 BSC 测试网进行签到',
+      connectWalletFirst: '请先连接钱包进行签到'
+    },
+    checkIn: {
+      title: '每日签到',
+      status: '今日状态',
+      available: '可签到',
+      unavailable: '已签到',
+      periodInactive: '活动未开始',
+      progress: '签到进度',
+      lastCheckIn: '上次签到',
+      network: '网络',
+      wrongNetwork: '网络错误'
     },
     details: {
       title: '项目详情',
