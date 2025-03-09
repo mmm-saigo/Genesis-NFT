@@ -451,7 +451,7 @@ function App() {
       const data = await response.json();
       console.log('Signature data:', data);
       
-      if (!data.signature || !data.ipAddress || !data.timestamp) {
+      if (!data.signature || !data.ipHash || !data.timestamp) {
         throw new Error('Invalid signature received from server');
       }
       
@@ -467,7 +467,7 @@ function App() {
       }
       
       // Format the parameters correctly
-      const ipAddress = String(data.ipAddress);
+      const ipHash = String(data.ipHash);
       const timestamp = BigInt(data.timestamp);
       
       // Ensure signature has 0x prefix
@@ -490,7 +490,7 @@ function App() {
       console.log('Hex decoded signature bytes length:', signatureBytes.length);
       
       console.log('Calling contract with parameters:', {
-        ipAddress,
+        ipHash,
         timestamp: timestamp.toString(),
         signatureBytes
       });
@@ -499,7 +499,7 @@ function App() {
       console.log('Testing check-in before actual submission...');
       try {
         const testResult = await checkInContract.testCheckIn(
-          ipAddress,
+          ipHash,
           timestamp.toString(),
           signatureBytes
         );
@@ -528,7 +528,7 @@ function App() {
       
       // Call the contract with hex decoded signature
       const tx = await checkInContract.checkIn(
-        ipAddress,
+        ipHash,
         timestamp,
         signatureBytes,
         { gasLimit }
