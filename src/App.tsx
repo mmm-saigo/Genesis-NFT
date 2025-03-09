@@ -218,6 +218,17 @@ function App() {
     };
   }, []);
 
+  // Check URL parameters for language setting
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const langParam = urlParams.get('lang');
+    
+    if (langParam === 'en' || langParam === 'zh') {
+      i18n.changeLanguage(langParam);
+      setCurrentLanguage(langParam);
+    }
+  }, []);
+
   const loadCheckInStatus = () => {
     if (!isConnected) {
       setConsecutiveCheckins(0);
@@ -573,7 +584,7 @@ function App() {
       }
       
       // Set a high gas limit to ensure the transaction goes through
-      const gasLimit = 1000000;
+      const gasLimit = 400000;
       
       // Call the contract with hex decoded signature
       const tx = await checkInContract.checkIn(

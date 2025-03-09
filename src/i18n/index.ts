@@ -17,6 +17,7 @@ i18n
         translation: zhTranslations
       }
     },
+    lng: 'en', // 设置默认语言为英语
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false
