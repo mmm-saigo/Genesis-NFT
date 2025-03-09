@@ -61,7 +61,8 @@ export default {
       addNetwork: 'Failed to add BSC network, please add manually',
       connection: 'Connection check failed, please refresh the page',
       walletConnect: 'Failed to connect wallet, please try again',
-      noWallet: 'Please install MetaMask or other Web3 wallet!',
+      noWallet: 'Please install MetaMask or OKX Wallet to continue!',
+      noOKXWallet: 'OKX Wallet is not installed. Please install OKX Wallet to continue.',
       contract: 'Cannot connect to NFT contract',
       mint: 'Mint failed, please ensure you have enough BNB and try again',
       notDeployed: 'NFT contract not deployed to current network'

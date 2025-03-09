@@ -61,7 +61,8 @@ export default {
       addNetwork: '添加 BSC 网络失败，请手动添加',
       connection: '连接检查失败，请刷新页面重试',
       walletConnect: '钱包连接失败，请重试',
-      noWallet: '请安装 MetaMask 或其他 Web3 钱包！',
+      noWallet: '请安装 MetaMask 或 OKX 钱包继续！',
+      noOKXWallet: 'OKX 钱包未安装，请安装 OKX 钱包继续。',
       contract: '无法连接到 NFT 合约',
       mint: 'NFT 铸造失败，请确保有足够的 BNB 并重试',
       notDeployed: 'NFT 合约未部署到当前网络'

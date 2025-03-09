@@ -1,7 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserProvider, Contract, parseEther, Signer } from 'ethers';
 import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+
+// 为OKX钱包添加TypeScript声明
+declare global {
+  interface Window {
+    okxwallet?: {
+      request: (args: { method: string; params?: any[] }) => Promise<any>;
+    };
+    ethereum?: any;
+  }
+}
 
 // 自定义全球图标组件
 const GlobeIcon = ({ className }: { className?: string }) => {
@@ -433,7 +443,64 @@ function App() {
     }
   };
 
+  // 检测是否为移动设备
+  const isMobileDevice = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
+  // 检测是否在OKX App内部浏览器中
+  const isInOKXApp = () => {
+    return /OKX/i.test(navigator.userAgent);
+  };
+
+  // 连接OKX钱包
+  const connectOKXWallet = useCallback(async () => {
+    // 检查OKX钱包是否可用
+    if (!window.okxwallet) {
+      // 如果在移动设备上，尝试打开OKX App
+      if (isMobileDevice() && !isInOKXApp()) {
+        // 尝试打开OKX App
+        window.location.href = 'okx://wallet/dapp/details?dappUrl=' + encodeURIComponent(window.location.href);
+        
+        // 设置一个超时，如果用户没有OKX App，提示下载
+        setTimeout(() => {
+          window.location.href = 'https://www.okx.com/download';
+        }, 1500);
+        return;
+      }
+      
+      setError(t('nft.errors.noOKXWallet'));
+      return;
+    }
+
+    try {
+      await switchToBSC();
+      
+      const accounts = await window.okxwallet.request({ method: 'eth_requestAccounts' });
+      const newAddress = accounts[0];
+      setIsConnected(true);
+      setAddress(newAddress);
+      
+      checkContractAndUpdateStatus();
+      checkCheckInStatus();
+    } catch (error) {
+      console.error('Error connecting OKX wallet:', error);
+      setError(t('nft.errors.walletConnect'));
+    }
+  }, [t]);
+
   const connectWallet = async () => {
+    // 检查是否为移动设备
+    const isMobile = isMobileDevice();
+    
+    // 如果是移动设备，优先尝试连接OKX钱包
+    if (isMobile) {
+      if (window.okxwallet || !isInOKXApp()) {
+        return connectOKXWallet();
+      }
+    }
+    
+    // 桌面端或其他情况，使用MetaMask
     if (window.ethereum) {
       try {
         await switchToBSC();
@@ -451,7 +518,12 @@ function App() {
         setError(t('nft.errors.walletConnect'));
       }
     } else {
-      setError(t('nft.errors.noWallet'));
+      // 如果没有检测到MetaMask，尝试OKX钱包
+      if (window.okxwallet) {
+        return connectOKXWallet();
+      } else {
+        setError(t('nft.errors.noWallet'));
+      }
     }
   };
 
