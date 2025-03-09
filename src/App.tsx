@@ -65,7 +65,7 @@ const NFT_CONTRACT_ABI = [
 ];
 
 const NFT_CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x7eE7e02aB3C684bBF4935859dca1b3Bc07cD890B";
+const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x6813d9dd411AaB8934643049C267A6E0F3d5bD3d";//主网每日签到合约
 const CHECKIN_API_URL = "https://checkin.saigo.dev/api/check-in-data";
 
 const DAILY_CHECKIN_ABI = [
@@ -129,30 +129,30 @@ const DAILY_CHECKIN_ABI = [
 ];
 
 //  主网
-// const BSC_NETWORK = {
-//   chainId: '0x38',
-//   chainName: 'BNB Smart Chain',
-//   nativeCurrency: {
-//     name: 'BNB',
-//     symbol: 'BNB',
-//     decimals: 18
-//   },
-//   rpcUrls: ['https://bsc-dataseed.binance.org/'],
-//   blockExplorerUrls: ['https://bscscan.com']
-// };
-
-// 测试网
 const BSC_NETWORK = {
-  chainId: '0x61',
-  chainName: 'BNB Smart Chain Testnet',
+  chainId: '0x38',
+  chainName: 'BNB Smart Chain',
   nativeCurrency: {
     name: 'BNB',
     symbol: 'BNB',
     decimals: 18
   },
-  rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
-  blockExplorerUrls: ['https://testnet.bscscan.com']
+  rpcUrls: ['https://bsc-dataseed.binance.org/'],
+  blockExplorerUrls: ['https://bscscan.com']
 };
+
+// 测试网
+// const BSC_NETWORK = {
+//   chainId: '0x61',
+//   chainName: 'BNB Smart Chain Testnet',
+//   nativeCurrency: {
+//     name: 'BNB',
+//     symbol: 'BNB',
+//     decimals: 18
+//   },
+//   rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+//   blockExplorerUrls: ['https://testnet.bscscan.com']
+// };
 
 function App() {
   const { t, i18n } = useTranslation();
