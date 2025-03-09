@@ -1,7 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserProvider, Contract, parseEther, Signer } from 'ethers';
-import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, Languages } from 'lucide-react';
+import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+
+// 自定义全球图标组件
+const GlobeIcon = ({ className }: { className?: string }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <circle cx="12" cy="12" r="10"></circle>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+      <line x1="2" y1="12" x2="22" y2="12"></line>
+    </svg>
+  );
+};
 
 const NFT_CONTRACT_ABI = [
   {
@@ -142,6 +162,8 @@ function App() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInPeriodActive, setCheckInPeriodActive] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
+  const [currentLanguage, setCurrentLanguage] = useState(() => i18n.language || 'en');
+  const languageDropdownRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkConnection();
@@ -168,6 +190,33 @@ function App() {
       checkCheckInStatus();
     }
   }, [isConnected, address, currentNetwork]);
+
+  useEffect(() => {
+    // Update currentLanguage when i18n language changes
+    const handleLanguageChange = () => {
+      setCurrentLanguage(i18n.language || 'en');
+    };
+    
+    i18n.on('languageChanged', handleLanguageChange);
+    
+    return () => {
+      i18n.off('languageChanged', handleLanguageChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Close language dropdown when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
+        setIsLanguageDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const loadCheckInStatus = () => {
     if (!isConnected) {
@@ -605,6 +654,7 @@ function App() {
 
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
+    setCurrentLanguage(lng);
     setIsLanguageDropdownOpen(false);
   };
 
@@ -675,24 +725,26 @@ function App() {
             {t('header.title')}
           </h1>
           <div className="flex items-center gap-2 md:gap-4">
-            <div className="relative">
+            <div className="relative" ref={languageDropdownRef}>
               <button
                 onClick={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
-                className="p-2 rounded-full hover:bg-[#1d1d1d] transition-colors"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[#1d1d1d] hover:bg-[#1d1d1d] transition-colors"
               >
-                <Languages className="w-5 h-5" />
+                <GlobeIcon className="w-4 h-4 text-gray-300" />
+                <span className="text-sm text-gray-300">{currentLanguage === 'en' ? 'English' : '中文'}</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
               </button>
               {isLanguageDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-[#0a0a0a] border border-[#1d1d1d] rounded-lg shadow-lg overflow-hidden">
+                <div className="absolute right-0 mt-2 w-40 bg-[#0a0a0a] border border-[#1d1d1d] rounded-lg shadow-lg overflow-hidden z-50">
                   <button
                     onClick={() => changeLanguage('en')}
-                    className="w-full px-4 py-2 text-left hover:bg-[#1d1d1d] transition-colors"
+                    className={`w-full px-4 py-3 text-left hover:bg-[#1d1d1d] transition-colors flex items-center ${currentLanguage === 'en' ? 'text-blue-500 font-medium' : 'text-gray-300'}`}
                   >
                     English
                   </button>
                   <button
                     onClick={() => changeLanguage('zh')}
-                    className="w-full px-4 py-2 text-left hover:bg-[#1d1d1d] transition-colors"
+                    className={`w-full px-4 py-3 text-left hover:bg-[#1d1d1d] transition-colors flex items-center ${currentLanguage === 'zh' ? 'text-blue-500 font-medium' : 'text-gray-300'}`}
                   >
                     中文
                   </button>
