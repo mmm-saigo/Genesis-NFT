@@ -193,7 +193,12 @@ function App() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [checkInPeriodActive, setCheckInPeriodActive] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
-  const [currentLanguage, setCurrentLanguage] = useState(() => i18n.language || 'en');
+  const [currentLanguage, setCurrentLanguage] = useState(() => {
+    // 检查 localStorage 中是否有保存的语言设置
+    const savedLanguage = localStorage.getItem('userLanguage');
+    // 如果有保存的设置则使用，否则默认为英文
+    return savedLanguage || 'en';
+  });
   const [checkInStartDate, setCheckInStartDate] = useState<Date | null>(null);
   const [checkInEndDate, setCheckInEndDate] = useState<Date | null>(null);
   const [minBnbBalance, setMinBnbBalance] = useState<string>('0');
@@ -217,6 +222,14 @@ function App() {
         window.ethereum.removeListener('disconnect', handleDisconnect);
       }
     };
+  }, []);
+
+  // 确保在组件挂载时设置正确的语言
+  useEffect(() => {
+    // 如果当前语言与 i18n 的语言不同，则更新 i18n 的语言
+    if (currentLanguage !== i18n.language) {
+      i18n.changeLanguage(currentLanguage);
+    }
   }, []);
 
   useEffect(() => {
@@ -262,6 +275,8 @@ function App() {
     if (langParam === 'en' || langParam === 'zh') {
       i18n.changeLanguage(langParam);
       setCurrentLanguage(langParam);
+      // 保存 URL 参数设置的语言到 localStorage
+      localStorage.setItem('userLanguage', langParam);
     }
   }, []);
 
@@ -797,6 +812,8 @@ function App() {
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
     setCurrentLanguage(lng);
+    // 保存用户的语言选择到 localStorage
+    localStorage.setItem('userLanguage', lng);
     setIsLanguageDropdownOpen(false);
   };
 

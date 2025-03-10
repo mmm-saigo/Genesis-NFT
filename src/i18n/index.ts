@@ -5,6 +5,9 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 import enTranslations from './locales/en';
 import zhTranslations from './locales/zh';
 
+// 检查是否有保存的语言设置
+const savedLanguage = localStorage.getItem('userLanguage');
+
 i18n
   .use(LanguageDetector)
   .use(initReactI18next)
@@ -17,10 +20,14 @@ i18n
         translation: zhTranslations
       }
     },
-    lng: 'en', // 设置默认语言为英语
+    lng: savedLanguage || 'en', // 如果有保存的语言设置则使用，否则默认为英语
     fallbackLng: 'en',
     interpolation: {
       escapeValue: false
+    },
+    detection: {
+      order: ['localStorage', 'navigator'],
+      lookupLocalStorage: 'userLanguage'
     }
   });
 
