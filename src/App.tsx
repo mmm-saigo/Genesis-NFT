@@ -64,7 +64,7 @@ const NFT_CONTRACT_ABI = [
   }
 ];
 
-const NFT_CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const NFT_CONTRACT_ADDRESS = "";//TODO: 主网NFT合约地址
 const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x6813d9dd411AaB8934643049C267A6E0F3d5bD3d";//主网每日签到合约
 const CHECKIN_API_URL = "https://checkin.saigo.dev/api/check-in-data";
 
