@@ -6,6 +6,9 @@ export default {
     checkingIn: '签到中...',
     connectWallet: '连接钱包'
   },
+  footer: {
+    copyright: '© 2025 SAIGO. 版权所有。'
+  },
   nft: {
     preview: {
       progress: '签到进度: {{count}}/3',

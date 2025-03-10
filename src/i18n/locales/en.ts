@@ -6,6 +6,9 @@ export default {
     checkingIn: 'Checking In...',
     connectWallet: 'Connect Wallet'
   },
+  footer: {
+    copyright: '© 2025 SAIGO. All rights reserved.'
+  },
   nft: {
     preview: {
       progress: 'Check-in Progress: {{count}}/3',

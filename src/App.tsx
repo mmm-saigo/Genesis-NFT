@@ -1131,6 +1131,12 @@ function App() {
           </div>
         </div>
       </main>
+
+      <footer className="py-6 border-t border-[#1d1d1d] bg-[#030014]">
+        <div className="container mx-auto px-4 text-center">
+          <p className="text-[#94a3b8] text-sm">{t('footer.copyright')}</p>
+        </div>
+      </footer>
     </div>
   );
 }
