@@ -21,12 +21,17 @@ export default {
       title: '每日签到',
       status: '今日状态',
       available: '可签到',
-      unavailable: '已签到',
+      unavailable: '不可签到',
+      alreadyCheckedIn: '今日已签到',
+      insufficientBalanceStatus: '余额不足',
       periodInactive: '活动未开始',
       progress: '签到进度',
       lastCheckIn: '上次签到',
       network: '网络',
-      wrongNetwork: '网络错误'
+      wrongNetwork: '网络错误',
+      period: '签到活动期间',
+      minBalance: '最低 BNB 余额',
+      insufficientBalance: '余额不足'
     },
     details: {
       title: '项目详情',
@@ -65,7 +70,8 @@ export default {
       noOKXWallet: 'OKX 钱包未安装，请安装 OKX 钱包继续。',
       contract: '无法连接到 NFT 合约',
       mint: 'NFT 铸造失败，请确保有足够的 BNB 并重试',
-      notDeployed: 'NFT 合约未部署到当前网络'
+      notDeployed: 'NFT 合约未部署到当前网络',
+      serverError: '服务器错误'
     }
   }
 };

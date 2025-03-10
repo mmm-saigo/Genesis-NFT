@@ -22,11 +22,16 @@ export default {
       status: 'Today\'s Status',
       available: 'Available',
       unavailable: 'Unavailable',
+      alreadyCheckedIn: 'Already Checked In',
+      insufficientBalanceStatus: 'Insufficient Balance',
       periodInactive: 'Period Inactive',
       progress: 'Progress',
       lastCheckIn: 'Last Check-in',
       network: 'Network',
-      wrongNetwork: 'Wrong Network'
+      wrongNetwork: 'Wrong Network',
+      period: 'Check-in Period',
+      minBalance: 'Min. BNB Balance',
+      insufficientBalance: 'Insufficient Balance'
     },
     details: {
       title: 'Project Details',
@@ -65,7 +70,8 @@ export default {
       noOKXWallet: 'OKX Wallet is not installed. Please install OKX Wallet to continue.',
       contract: 'Cannot connect to NFT contract',
       mint: 'Mint failed, please ensure you have enough BNB and try again',
-      notDeployed: 'NFT contract not deployed to current network'
+      notDeployed: 'NFT contract not deployed to current network',
+      serverError: 'Server error'
     }
   }
 };

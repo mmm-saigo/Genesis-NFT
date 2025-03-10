@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { BrowserProvider, Contract, parseEther, Signer } from 'ethers';
+import { BrowserProvider, Contract, parseEther, Signer, formatEther } from 'ethers';
 import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -125,6 +125,27 @@ const DAILY_CHECKIN_ABI = [
     "outputs": [{"name": "", "type": "bool"}],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "startDate",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "endDate",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "minBnbBalance",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
   }
 ];
 
@@ -173,6 +194,11 @@ function App() {
   const [checkInPeriodActive, setCheckInPeriodActive] = useState(false);
   const [checkInError, setCheckInError] = useState<string | null>(null);
   const [currentLanguage, setCurrentLanguage] = useState(() => i18n.language || 'en');
+  const [checkInStartDate, setCheckInStartDate] = useState<Date | null>(null);
+  const [checkInEndDate, setCheckInEndDate] = useState<Date | null>(null);
+  const [minBnbBalance, setMinBnbBalance] = useState<string>('0');
+  const [userBnbBalance, setUserBnbBalance] = useState<string>('0');
+  const [hasSufficientBalance, setHasSufficientBalance] = useState(true);
   const languageDropdownRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -307,11 +333,35 @@ function App() {
         console.log('Check-in period active:', isActive);
         setCheckInPeriodActive(isActive);
         
+        // Get check-in period dates
+        const startDateTimestamp = await checkInContract.startDate();
+        const endDateTimestamp = await checkInContract.endDate();
+        const startDate = new Date(Number(startDateTimestamp) * 1000);
+        const endDate = new Date(Number(endDateTimestamp) * 1000);
+        setCheckInStartDate(startDate);
+        setCheckInEndDate(endDate);
+        
+        // Get minimum BNB balance requirement
+        const minBnbBalanceWei = await checkInContract.minBnbBalance();
+        const minBnbBalanceEther = formatEther(minBnbBalanceWei);
+        setMinBnbBalance(minBnbBalanceEther);
+        
+        // Get user's BNB balance
+        const userBalanceWei = await provider.getBalance(address);
+        const userBalanceEther = formatEther(userBalanceWei);
+        setUserBnbBalance(userBalanceEther);
+        
+        // Check if user has sufficient balance
+        const hasSufficient = userBalanceWei >= minBnbBalanceWei;
+        setHasSufficientBalance(hasSufficient);
+        
         if (isActive) {
           // Check if user has already checked in today
           const hasCheckedIn = await checkInContract.hasCheckedInToday(address);
           console.log('Has checked in today:', hasCheckedIn);
-          setCanCheckIn(!hasCheckedIn);
+          
+          // User can check in if they haven't checked in today AND have sufficient balance
+          setCanCheckIn(!hasCheckedIn && hasSufficient);
           
           // Get user's check-in status
           const [lastCheckInTime, totalCheckIns, hasCheckedInToday] = await checkInContract.getUserCheckInStatus(address);
@@ -550,7 +600,7 @@ function App() {
         const newNetwork = await provider.getNetwork();
         const newChainIdHex = '0x' + newNetwork.chainId.toString(16);
         if (newChainIdHex !== BSC_NETWORK.chainId) {
-          throw new Error('Failed to switch to BSC testnet');
+          throw new Error(t('nft.preview.wrongNetwork'));
         }
       }
       
@@ -561,13 +611,22 @@ function App() {
       // Check if check-in period is active
       const isActive = await checkInContract.isCheckInPeriodActive();
       if (!isActive) {
-        throw new Error('Check-in period is not active');
+        throw new Error(t('nft.preview.checkInPeriodInactive'));
       }
       
       // Check if user has already checked in today
       const hasCheckedIn = await checkInContract.hasCheckedInToday(address);
       if (hasCheckedIn) {
-        throw new Error('Already checked in today');
+        throw new Error(t('nft.checkIn.alreadyCheckedIn'));
+      }
+      
+      // Check minimum BNB balance requirement
+      const minBnbBalanceWei = await checkInContract.minBnbBalance();
+      const userBalanceWei = await provider.getBalance(address);
+      
+      if (userBalanceWei < minBnbBalanceWei) {
+        const minBnbBalanceEther = formatEther(minBnbBalanceWei);
+        throw new Error(`${t('nft.checkIn.insufficientBalance')}: ${minBnbBalanceEther} BNB`);
       }
       
       // Get signature from the server with a fresh request
@@ -577,7 +636,7 @@ function App() {
       const response = await fetch(signatureUrl);
       
       if (!response.ok) {
-        throw new Error(`Failed to get signature from server: ${response.status} ${response.statusText}`);
+        throw new Error(`${t('nft.errors.serverError')}: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -747,6 +806,39 @@ function App() {
   const NFTPreview = () => {
     const displayConsecutiveCheckins = isConnected ? consecutiveCheckins : 0;
     
+    // Determine the check-in status message
+    const getCheckInStatusMessage = () => {
+      if (!isConnected) {
+        return t('nft.preview.connectWalletFirst');
+      }
+      
+      if (!checkInPeriodActive) {
+        return t('nft.preview.checkInPeriodInactive');
+      }
+      
+      if (currentNetwork !== BSC_NETWORK.chainId) {
+        return t('nft.preview.wrongNetwork');
+      }
+      
+      if (!hasSufficientBalance && minBnbBalance !== '0') {
+        return `${t('nft.checkIn.insufficientBalance')}: ${minBnbBalance} BNB`;
+      }
+      
+      if (!canCheckIn && lastCheckIn) {
+        return t('nft.checkIn.alreadyCheckedIn');
+      }
+      
+      if (displayConsecutiveCheckins === 0) {
+        return t('nft.preview.firstCheckIn');
+      } else if (displayConsecutiveCheckins === 1) {
+        return t('nft.preview.secondCheckIn');
+      } else if (displayConsecutiveCheckins === 2) {
+        return t('nft.preview.thirdCheckIn');
+      } else {
+        return t('nft.preview.completed');
+      }
+    };
+    
     return (
       <div className="bg-[#0a0a0a] rounded-2xl overflow-hidden border border-[#1d1d1d] p-8">
         <div className="flex flex-col items-center justify-center min-h-[280px] gap-6">
@@ -759,12 +851,12 @@ function App() {
           </div>
           <div className="text-center text-gray-400">
             <p className="mb-2">{t('nft.preview.progress', { count: displayConsecutiveCheckins })}</p>
-            <p className="text-sm">
-              {!isConnected && t('nft.preview.connectWalletFirst')}
-              {isConnected && displayConsecutiveCheckins === 0 && t('nft.preview.firstCheckIn')}
-              {isConnected && displayConsecutiveCheckins === 1 && t('nft.preview.secondCheckIn')}
-              {isConnected && displayConsecutiveCheckins === 2 && t('nft.preview.thirdCheckIn')}
-              {isConnected && displayConsecutiveCheckins === 3 && t('nft.preview.completed')}
+            <p className={`text-sm ${
+              !isConnected || !checkInPeriodActive || currentNetwork !== BSC_NETWORK.chainId || !hasSufficientBalance 
+                ? 'text-yellow-500' 
+                : ''
+            }`}>
+              {getCheckInStatusMessage()}
             </p>
             {lastCheckIn && (
               <p className="mt-2 text-xs text-gray-500">
@@ -776,16 +868,8 @@ function App() {
                 {checkInError}
               </p>
             )}
-            {!checkInPeriodActive && isConnected && (
-              <p className="mt-2 text-xs text-yellow-500">
-                {t('nft.preview.checkInPeriodInactive')}
-              </p>
-            )}
             {isConnected && currentNetwork !== BSC_NETWORK.chainId && (
               <div className="mt-4">
-                <p className="text-xs text-yellow-500 mb-2">
-                  {t('nft.preview.wrongNetwork')}
-                </p>
                 <button
                   onClick={switchToBSC}
                   className="px-3 py-1.5 rounded-full text-xs bg-[#0ea5e9] hover:bg-[#0284c7] text-white transition-colors"
@@ -870,12 +954,22 @@ function App() {
                 <div className="space-y-2 text-[#94a3b8]">
                   <div className="flex justify-between items-center">
                     <span>{t('nft.checkIn.status')}</span>
-                    <span className={`px-2 py-1 rounded-full text-xs ${canCheckIn && checkInPeriodActive ? 'bg-green-900/30 text-green-400' : 'bg-red-900/30 text-red-400'}`}>
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      canCheckIn && checkInPeriodActive 
+                        ? 'bg-green-900/30 text-green-400' 
+                        : !checkInPeriodActive
+                          ? 'bg-yellow-900/30 text-yellow-400'
+                          : !hasSufficientBalance
+                            ? 'bg-red-900/30 text-red-400'
+                            : 'bg-red-900/30 text-red-400'
+                    }`}>
                       {!checkInPeriodActive 
                         ? t('nft.checkIn.periodInactive')
-                        : canCheckIn 
-                          ? t('nft.checkIn.available') 
-                          : t('nft.checkIn.unavailable')}
+                        : !hasSufficientBalance
+                          ? t('nft.checkIn.insufficientBalanceStatus')
+                          : canCheckIn 
+                            ? t('nft.checkIn.available') 
+                            : t('nft.checkIn.alreadyCheckedIn')}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -888,6 +982,21 @@ function App() {
                       <span>{lastCheckIn}</span>
                     </div>
                   )}
+                  {checkInStartDate && checkInEndDate && (
+                    <div className="flex justify-between items-center">
+                      <span>{t('nft.checkIn.period')}</span>
+                      <span>{checkInStartDate.toLocaleDateString()} - {checkInEndDate.toLocaleDateString()}</span>
+                    </div>
+                  )}
+                  {minBnbBalance !== '0' && (
+                    <div className="flex justify-between items-center">
+                      <span>{t('nft.checkIn.minBalance')}</span>
+                      <span className={!hasSufficientBalance ? 'text-red-400' : ''}>
+                        {minBnbBalance} BNB
+                        {!hasSufficientBalance && ` (${t('nft.checkIn.insufficientBalance')})`}
+                      </span>
+                    </div>
+                  )}
                   {currentNetwork !== BSC_NETWORK.chainId && (
                     <div className="flex justify-between items-center text-yellow-500">
                       <span>{t('nft.checkIn.network')}</span>
@@ -897,9 +1006,9 @@ function App() {
                   <div className="pt-2">
                     <button
                       onClick={handleCheckIn}
-                      disabled={!canCheckIn || isCheckingIn || currentNetwork !== BSC_NETWORK.chainId || !checkInPeriodActive}
+                      disabled={!canCheckIn || isCheckingIn || currentNetwork !== BSC_NETWORK.chainId || !checkInPeriodActive || !hasSufficientBalance}
                       className={`w-full py-2 rounded-lg flex items-center justify-center gap-2 transition-colors ${
-                        canCheckIn && !isCheckingIn && currentNetwork === BSC_NETWORK.chainId && checkInPeriodActive
+                        canCheckIn && !isCheckingIn && currentNetwork === BSC_NETWORK.chainId && checkInPeriodActive && hasSufficientBalance
                           ? 'bg-[#0ea5e9] hover:bg-[#0284c7] text-white'
                           : 'bg-[#1d1d1d] text-gray-500 cursor-not-allowed'
                       }`}
@@ -916,9 +1025,11 @@ function App() {
                             ? t('nft.checkIn.periodInactive')
                             : currentNetwork !== BSC_NETWORK.chainId
                               ? t('nft.preview.wrongNetwork')
-                              : canCheckIn 
-                                ? t('header.checkIn') 
-                                : t('header.alreadyCheckedIn')}
+                              : !hasSufficientBalance
+                                ? t('nft.checkIn.insufficientBalance')
+                                : canCheckIn 
+                                  ? t('header.checkIn') 
+                                  : t('header.alreadyCheckedIn')}
                       </span>
                     </button>
                   </div>
