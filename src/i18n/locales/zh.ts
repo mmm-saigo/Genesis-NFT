@@ -18,7 +18,8 @@ export default {
       completed: '已全部点亮！',
       checkInPeriodInactive: '签到活动未开始',
       wrongNetwork: '请切换到 BSC 测试网进行签到',
-      connectWalletFirst: '请先连接钱包进行签到'
+      connectWalletFirst: '请先连接钱包进行签到',
+      communityLightCount: '社区已累积点亮 {{count}} 次'
     },
     checkIn: {
       title: '每日签到',

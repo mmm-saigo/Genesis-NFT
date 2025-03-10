@@ -204,11 +204,13 @@ function App() {
   const [minBnbBalance, setMinBnbBalance] = useState<string>('0');
   const [userBnbBalance, setUserBnbBalance] = useState<string>('0');
   const [hasSufficientBalance, setHasSufficientBalance] = useState(true);
+  const [communityLightCount, setCommunityLightCount] = useState<number>(0);
   const languageDropdownRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     checkConnection();
     loadCheckInStatus();
+    fetchCommunityLightCount();
     if (window.ethereum) {
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       window.ethereum.on('chainChanged', handleChainChanged);
@@ -754,6 +756,9 @@ function App() {
       
       // Update check-in status from contract
       await checkCheckInStatus();
+      
+      // 直接在本地将社区点亮次数加 1，而不是再次调用 API
+      setCommunityLightCount(prevCount => prevCount + 1);
     } catch (error: any) {
       console.error('Check-in failed:', error);
       
@@ -817,11 +822,52 @@ function App() {
     setIsLanguageDropdownOpen(false);
   };
 
+  // 获取社区点亮次数
+  const fetchCommunityLightCount = async () => {
+    try {
+      const response = await fetch('https://checkin.saigo.dev/api/get_light_count');
+      if (response.ok) {
+        const data = await response.json();
+        if (data && typeof data.count === 'number') {
+          setCommunityLightCount(data.count);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch community light count:', error);
+    }
+  };
+
   const isCorrectNetwork = currentNetwork === BSC_NETWORK.chainId;
   const canMint = !hasMinted && isContractAvailable && isCorrectNetwork;
 
   const NFTPreview = () => {
     const displayConsecutiveCheckins = isConnected ? consecutiveCheckins : 0;
+    
+    // 添加数字动画效果
+    const [displayCount, setDisplayCount] = useState(0);
+    
+    useEffect(() => {
+      if (communityLightCount > 0) {
+        // 如果点亮次数很大，使用动画效果
+        if (communityLightCount > 100) {
+          let start = 0;
+          const increment = Math.max(1, Math.floor(communityLightCount / 20)); // 20步完成动画
+          const timer = setInterval(() => {
+            start += increment;
+            if (start >= communityLightCount) {
+              setDisplayCount(communityLightCount);
+              clearInterval(timer);
+            } else {
+              setDisplayCount(start);
+            }
+          }, 20);
+          return () => clearInterval(timer);
+        } else {
+          // 如果点亮次数较小，直接显示
+          setDisplayCount(communityLightCount);
+        }
+      }
+    }, [communityLightCount]);
     
     // Determine the check-in status message
     const getCheckInStatusMessage = () => {
@@ -866,6 +912,19 @@ function App() {
             <span className={`transition-all duration-500 ${displayConsecutiveCheckins >= 3 ? 'text-blue-400' : 'text-gray-800'}`}>G</span>
             <span className={`transition-all duration-500 ${displayConsecutiveCheckins >= 3 ? 'text-blue-400' : 'text-gray-800'}`}>O</span>
           </div>
+          
+          {/* 社区点亮次数显示 */}
+          {communityLightCount > 0 && (
+            <div className="flex items-center justify-center">
+              <div className="px-4 py-2 bg-blue-400/10 rounded-full border border-blue-400/20 transition-all duration-300 hover:bg-blue-400/20">
+                <p className="text-sm text-blue-400 flex items-center">
+                  <span className="mr-1 animate-pulse">✨</span>
+                  {t('nft.preview.communityLightCount', { count: displayCount })}
+                </p>
+              </div>
+            </div>
+          )}
+          
           <div className="text-center text-gray-400">
             <p className="mb-2">{t('nft.preview.progress', { count: displayConsecutiveCheckins })}</p>
             <p className={`text-sm ${

@@ -18,7 +18,8 @@ export default {
       completed: 'All letters lit up!',
       checkInPeriodInactive: 'Check-in period is not active',
       wrongNetwork: 'Please switch to BSC Testnet to check in',
-      connectWalletFirst: 'Connect wallet to check in'
+      connectWalletFirst: 'Connect wallet to check in',
+      communityLightCount: 'Community has lit up {{count}} times'
     },
     checkIn: {
       title: 'Daily Check-in',
