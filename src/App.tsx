@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserProvider, Contract, parseEther, Signer, formatEther } from 'ethers';
-import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, ChevronDown } from 'lucide-react';
+import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, ChevronDown, Github, Twitter, Mail, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 // 为OKX钱包添加TypeScript声明
@@ -29,6 +29,25 @@ const GlobeIcon = ({ className }: { className?: string }) => {
       <circle cx="12" cy="12" r="10"></circle>
       <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
       <line x1="2" y1="12" x2="22" y2="12"></line>
+    </svg>
+  );
+};
+
+// 自定义 Telegram 图标组件
+const TelegramIcon = ({ className }: { className?: string }) => {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="1.5" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M21.73 4.04c-.29-.21-.66-.28-1.01-.2L4.11 8.91c-.7.17-1.12.78-1.09 1.47.03.69.5 1.27 1.22 1.38l5.23.84 2.28 7.4c.11.39.38.71.76.87.38.16.8.12 1.15-.09l3.87-2.41 4.93 3.68c.3.22.66.34 1.03.34.25 0 .5-.05.74-.16.4-.18.71-.5.87-.92l3.07-13.5c.21-.89-.28-1.8-1.14-2.17z"></path>
+      <path d="M10.5 14.5l-1.5 7 3.8-2.5 4.8 3.5 3.4-15-15 5 4.5 2z"></path>
     </svg>
   );
 };
@@ -67,6 +86,16 @@ const NFT_CONTRACT_ABI = [
 const NFT_CONTRACT_ADDRESS = "";//TODO: 主网NFT合约地址
 const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x6813d9dd411AaB8934643049C267A6E0F3d5bD3d";//主网每日签到合约
 const CHECKIN_API_URL = "https://checkin.saigo.dev/api/check-in-data";
+
+// 社交媒体和联系方式配置
+const SOCIAL_LINKS = {
+  github: "https://github.com/saigo-team",
+  twitter: "https://x.com/SaigoTrading",
+  telegram: "https://t.me/SAIGOGroup",
+  discord: "",
+  medium: "",
+  email: "saigo-team@saigo.dev"
+};
 
 const DAILY_CHECKIN_ABI = [
   {
@@ -1209,8 +1238,54 @@ function App() {
       </main>
 
       <footer className="py-6 border-t border-[#1d1d1d] bg-[#030014]">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-[#94a3b8] text-sm">{t('footer.copyright')}</p>
+        <div className="container mx-auto px-4">
+          {/* 社交媒体链接 */}
+          <div className="mb-6">
+            <h3 className="text-center text-lg font-semibold mb-4 bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              {t('footer.connectWithUs')}
+            </h3>
+            <div className="flex justify-center gap-6">
+              <a 
+                href={SOCIAL_LINKS.github} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-white transition-colors"
+                aria-label="GitHub"
+              >
+                <Github className="w-6 h-6" />
+              </a>
+              <a 
+                href={SOCIAL_LINKS.twitter} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-400 transition-colors"
+                aria-label="Twitter"
+              >
+                <Twitter className="w-6 h-6" />
+              </a>
+              <a 
+                href={SOCIAL_LINKS.telegram} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-gray-400 hover:text-blue-500 transition-colors"
+                aria-label="Telegram"
+              >
+                <TelegramIcon className="w-6 h-6" />
+              </a>
+              <a 
+                href={`mailto:${SOCIAL_LINKS.email}`} 
+                className="text-gray-400 hover:text-red-400 transition-colors"
+                aria-label="Email"
+              >
+                <Mail className="w-6 h-6" />
+              </a>
+            </div>
+          </div>
+          
+          {/* 版权信息 */}
+          <div className="text-center">
+            <p className="text-[#94a3b8] text-sm">{t('footer.copyright')}</p>
+          </div>
         </div>
       </footer>
     </div>

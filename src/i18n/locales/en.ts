@@ -7,7 +7,10 @@ export default {
     connectWallet: 'Connect Wallet'
   },
   footer: {
-    copyright: '© 2025 SAIGO. All rights reserved.'
+    copyright: '© 2025 SAIGO. All rights reserved.',
+    connectWithUs: 'Connect With Us',
+    followUs: 'Follow us on social media',
+    contactUs: 'Contact us'
   },
   nft: {
     preview: {
