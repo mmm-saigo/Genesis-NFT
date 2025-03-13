@@ -59,14 +59,20 @@ export default {
       mintStatus: '铸造状态',
       minted: '已铸造',
       notMinted: '未铸造',
+      mintProgress: '铸造进度',
+      mintingStatus: '铸造开关',
+      mintingEnabled: '已开启',
+      mintingDisabled: '已关闭',
       switchNetwork: '请切换到 BSC 网络',
       switchButton: '切换网络',
       connectFirst: '请先连接钱包',
       contractNotDeployed: 'NFT 合约未部署',
       mintCompleted: '已铸造完成',
+      soldOut: '已售罄',
       minting: '铸造中...',
       mintNFT: '铸造 NFT',
-      lastCheckIn: '上次签到: {{time}}'
+      lastCheckIn: '上次签到: {{time}}',
+      success: 'NFT 铸造成功！'
     },
     errors: {
       networkSwitch: '切换到 BSC 网络失败',
@@ -78,7 +84,9 @@ export default {
       contract: '无法连接到 NFT 合约',
       mint: 'NFT 铸造失败，请确保有足够的 BNB 并重试',
       notDeployed: 'NFT 合约未部署到当前网络',
-      serverError: '服务器错误'
+      serverError: '服务器错误',
+      soldOut: 'NFT 已全部铸造完毕',
+      mintingDisabled: '铸造功能当前已关闭'
     }
   }
 };

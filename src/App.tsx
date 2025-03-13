@@ -54,7 +54,7 @@ const TelegramIcon = ({ className }: { className?: string }) => {
 
 const NFT_CONTRACT_ABI = [
   {
-    "inputs": [],
+    "inputs": [{"name": "_to", "type": "address"}],
     "name": "mint",
     "outputs": [],
     "stateMutability": "payable",
@@ -68,22 +68,50 @@ const NFT_CONTRACT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [{"name": "account", "type": "address"}],
+    "inputs": [{"name": "_address", "type": "address"}],
     "name": "isWhitelisted",
     "outputs": [{"name": "", "type": "bool"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
-    "inputs": [{"name": "owner", "type": "address"}],
-    "name": "hasMinted",
+    "inputs": [{"name": "_address", "type": "address"}],
+    "name": "getMintedCountByAddress",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mintPrice",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mintedCount",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "MAX_SUPPLY",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mintingEnabled",
     "outputs": [{"name": "", "type": "bool"}],
     "stateMutability": "view",
     "type": "function"
   }
 ];
 
-const NFT_CONTRACT_ADDRESS = "";//TODO: 主网NFT合约地址
+const NFT_CONTRACT_ADDRESS = "";//TODO: 测试网NFT合约地址
 const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x6813d9dd411AaB8934643049C267A6E0F3d5bD3d";//主网每日签到合约
 const CHECKIN_API_URL = "https://checkin.saigo.dev/api/check-in-data";
 
@@ -217,6 +245,10 @@ function App() {
   const [isContractAvailable, setIsContractAvailable] = useState(false);
   const [isWhitelisted, setIsWhitelisted] = useState(false);
   const [hasMinted, setHasMinted] = useState(false);
+  const [mintPrice, setMintPrice] = useState<string>('0');
+  const [maxSupply, setMaxSupply] = useState<number>(5000); // Default to 5000 as per contract
+  const [mintedCount, setMintedCount] = useState<number>(0);
+  const [mintingEnabled, setMintingEnabled] = useState<boolean>(false);
   const [consecutiveCheckins, setConsecutiveCheckins] = useState(0);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -337,11 +369,37 @@ function App() {
           const isWhitelistedResult = await nftContract.isWhitelisted(address);
           setIsWhitelisted(isWhitelistedResult);
           
-          const hasMintedResult = await nftContract.hasMinted(address);
-          setHasMinted(hasMintedResult);
+          const mintedCountByAddress = await nftContract.getMintedCountByAddress(address);
+          setHasMinted(Number(mintedCountByAddress) > 0);
           
           const balanceResult = await nftContract.balanceOf(address);
           setNftBalance(Number(balanceResult));
+          
+          // Fetch mint price
+          const mintPriceWei = await nftContract.mintPrice();
+          setMintPrice(formatEther(mintPriceWei));
+          
+          // Fetch total minted count
+          const totalMinted = await nftContract.mintedCount();
+          setMintedCount(Number(totalMinted));
+          
+          // Fetch max supply (though it's a constant, we fetch it to be sure)
+          try {
+            const maxSupplyResult = await nftContract.MAX_SUPPLY();
+            setMaxSupply(Number(maxSupplyResult));
+          } catch (error) {
+            // If MAX_SUPPLY is truly a constant and not accessible via call, use the default
+            console.log('Using default MAX_SUPPLY value');
+          }
+          
+          // Check if minting is enabled
+          try {
+            const mintingEnabledResult = await nftContract.mintingEnabled();
+            setMintingEnabled(mintingEnabledResult);
+          } catch (error) {
+            console.error('Error checking if minting is enabled:', error);
+            setMintingEnabled(false);
+          }
         } catch (contractError) {
           console.error('NFT contract error:', contractError);
           setIsContractAvailable(false);
@@ -825,12 +883,36 @@ function App() {
       const signer = await provider.getSigner();
       const contract = new Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, signer);
       
-      const mintValue = isWhitelisted ? 0 : parseEther("0.015");
-      const tx = await contract.mint({ value: mintValue });
+      // Check if minting is enabled
+      const isMintingEnabled = await contract.mintingEnabled();
+      if (!isMintingEnabled) {
+        setError(t('nft.errors.mintingDisabled'));
+        setIsMinting(false);
+        return;
+      }
+      
+      // Check if minting is still available
+      const totalMinted = await contract.mintedCount();
+      const maxSupplyValue = await contract.MAX_SUPPLY();
+      
+      if (Number(totalMinted) >= Number(maxSupplyValue)) {
+        setError(t('nft.errors.soldOut'));
+        setIsMinting(false);
+        return;
+      }
+      
+      // Get mint price from contract
+      const mintPriceWei = await contract.mintPrice();
+      
+      // If whitelisted, mint price should be 0
+      const mintValue = isWhitelisted ? 0 : mintPriceWei;
+      
+      // Call mint function with address parameter
+      const tx = await contract.mint(address, { value: mintValue });
       await tx.wait();
       
       await checkContractAndUpdateStatus();
-      alert('NFT 铸造成功！');
+      alert(t('nft.mint.success'));
     } catch (error) {
       console.error('Error minting NFT:', error);
       setError(t('nft.errors.mint'));
@@ -867,7 +949,8 @@ function App() {
   };
 
   const isCorrectNetwork = currentNetwork === BSC_NETWORK.chainId;
-  const canMint = !hasMinted && isContractAvailable && isCorrectNetwork;
+  const isSoldOut = mintedCount >= maxSupply;
+  const isMintingAvailable = !hasMinted && isContractAvailable && isCorrectNetwork && !isSoldOut && mintingEnabled;
 
   const NFTPreview = () => {
     const displayConsecutiveCheckins = isConnected ? consecutiveCheckins : 0;
@@ -1176,7 +1259,7 @@ function App() {
                   <div className="flex justify-between items-center py-3 border-b border-[#1d1d1d]">
                     <span className="text-[#94a3b8]">{t('nft.mint.price')}</span>
                     <span className="font-semibold">
-                      {isWhitelisted ? t('nft.mint.free') : '0.015 BNB'}
+                      {isWhitelisted ? t('nft.mint.free') : `${mintPrice} BNB`}
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-3 border-b border-[#1d1d1d]">
@@ -1189,6 +1272,18 @@ function App() {
                     <span className="text-[#94a3b8]">{t('nft.mint.mintStatus')}</span>
                     <span className={`font-semibold ${hasMinted ? 'text-green-400' : ''}`}>
                       {hasMinted ? t('nft.mint.minted') : t('nft.mint.notMinted')}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-[#1d1d1d]">
+                    <span className="text-[#94a3b8]">{t('nft.mint.mintProgress')}</span>
+                    <span className="font-semibold">
+                      {mintedCount} / {maxSupply} ({((mintedCount / maxSupply) * 100).toFixed(2)}%)
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-3 border-b border-[#1d1d1d]">
+                    <span className="text-[#94a3b8]">{t('nft.mint.mintingStatus')}</span>
+                    <span className={`font-semibold ${mintingEnabled ? 'text-green-400' : 'text-red-400'}`}>
+                      {mintingEnabled ? t('nft.mint.mintingEnabled') : t('nft.mint.mintingDisabled')}
                     </span>
                   </div>
                   {!isCorrectNetwork && (
@@ -1207,9 +1302,9 @@ function App() {
 
                 <button
                   onClick={mintNFT}
-                  disabled={!isConnected || isMinting || !canMint || hasMinted}
+                  disabled={!isConnected || isMinting || !isMintingAvailable || hasMinted}
                   className={`w-full rounded-xl py-4 px-6 flex items-center justify-center gap-3 text-lg font-semibold transition-colors ${
-                    !isConnected || isMinting || !canMint || hasMinted
+                    !isConnected || isMinting || !isMintingAvailable || hasMinted
                       ? 'bg-[#1d1d1d] text-gray-500 cursor-not-allowed'
                       : 'bg-[#0ea5e9] hover:bg-[#0284c7] text-white'
                   }`}
@@ -1221,9 +1316,13 @@ function App() {
                       ? t('nft.mint.contractNotDeployed')
                       : hasMinted
                         ? t('nft.mint.mintCompleted')
-                        : isMinting 
-                          ? t('nft.mint.minting')
-                          : t('nft.mint.mintNFT')}
+                        : isSoldOut
+                          ? t('nft.mint.soldOut')
+                          : !mintingEnabled
+                            ? t('nft.mint.mintingDisabled')
+                            : isMinting 
+                              ? t('nft.mint.minting')
+                              : t('nft.mint.mintNFT')}
                 </button>
 
                 {lastCheckIn && (

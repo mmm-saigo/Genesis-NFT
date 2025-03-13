@@ -59,14 +59,20 @@ export default {
       mintStatus: 'Mint Status',
       minted: 'Minted',
       notMinted: 'Not Minted',
+      mintProgress: 'Mint Progress',
+      mintingStatus: 'Minting Status',
+      mintingEnabled: 'Enabled',
+      mintingDisabled: 'Disabled',
       switchNetwork: 'Please switch to BSC Network',
       switchButton: 'Switch Network',
       connectFirst: 'Connect Wallet First',
       contractNotDeployed: 'NFT Contract Not Deployed',
       mintCompleted: 'Mint Completed',
+      soldOut: 'Sold Out',
       minting: 'Minting...',
       mintNFT: 'Mint NFT',
-      lastCheckIn: 'Last Check-in: {{time}}'
+      lastCheckIn: 'Last Check-in: {{time}}',
+      success: 'NFT minted successfully!'
     },
     errors: {
       networkSwitch: 'Failed to switch to BSC network',
@@ -78,7 +84,9 @@ export default {
       contract: 'Cannot connect to NFT contract',
       mint: 'Mint failed, please ensure you have enough BNB and try again',
       notDeployed: 'NFT contract not deployed to current network',
-      serverError: 'Server error'
+      serverError: 'Server error',
+      soldOut: 'All NFTs have been minted',
+      mintingDisabled: 'Minting is currently disabled'
     }
   }
 };
