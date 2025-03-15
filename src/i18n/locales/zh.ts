@@ -56,6 +56,7 @@ export default {
       whitelistStatus: '白名单状态',
       whitelisted: '已在白名单',
       notWhitelisted: '未在白名单',
+      whitelistAppeal: '提交白名单申请',
       mintStatus: '铸造状态',
       minted: '已铸造',
       notMinted: '未铸造',

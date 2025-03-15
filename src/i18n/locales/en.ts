@@ -56,6 +56,7 @@ export default {
       whitelistStatus: 'Whitelist Status',
       whitelisted: 'Whitelisted',
       notWhitelisted: 'Not Whitelisted',
+      whitelistAppeal: 'Submit appeal for whitelist',
       mintStatus: 'Mint Status',
       minted: 'Minted',
       notMinted: 'Not Minted',
