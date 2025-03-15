@@ -1046,31 +1046,7 @@ function App() {
   const NFTPreview = () => {
     const displayConsecutiveCheckins = isConnected ? consecutiveCheckins : 0;
     
-    // 添加数字动画效果
-    const [displayCount, setDisplayCount] = useState(0);
-    
-    useEffect(() => {
-      if (communityLightCount > 0) {
-        // 如果点亮次数很大，使用动画效果
-        if (communityLightCount > 100) {
-          let start = 0;
-          const increment = Math.max(1, Math.floor(communityLightCount / 20)); // 20步完成动画
-          const timer = setInterval(() => {
-            start += increment;
-            if (start >= communityLightCount) {
-              setDisplayCount(communityLightCount);
-              clearInterval(timer);
-            } else {
-              setDisplayCount(start);
-            }
-          }, 20);
-          return () => clearInterval(timer);
-        } else {
-          // 如果点亮次数较小，直接显示
-          setDisplayCount(communityLightCount);
-        }
-      }
-    }, [communityLightCount]);
+    // 移除数字动画效果，直接显示点亮次数
     
     // Determine the check-in status message
     const getCheckInStatusMessage = () => {
@@ -1122,7 +1098,7 @@ function App() {
               <div className="px-4 py-2 bg-blue-400/10 rounded-full border border-blue-400/20 transition-all duration-300 hover:bg-blue-400/20">
                 <p className="text-sm text-blue-400 flex items-center">
                   <span className="mr-1 animate-pulse">✨</span>
-                  {t('nft.preview.communityLightCount', { count: displayCount })}
+                  {t('nft.preview.communityLightCount', { count: communityLightCount })}
                 </p>
               </div>
             </div>
