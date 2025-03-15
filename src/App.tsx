@@ -108,10 +108,17 @@ const NFT_CONTRACT_ABI = [
     "outputs": [{"name": "", "type": "bool"}],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mintStartTimestamp",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
   }
 ];
 
-const NFT_CONTRACT_ADDRESS = "";//TODO: 测试网NFT合约地址
+const NFT_CONTRACT_ADDRESS = "0xd3F43706349B2a3dCDd0D4A5aD67626180388871";//主网NFT合约
 const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x6813d9dd411AaB8934643049C267A6E0F3d5bD3d";//主网每日签到合约
 const CHECKIN_API_URL = "https://checkin.saigo.dev/api/check-in-data";
 
@@ -249,6 +256,7 @@ function App() {
   const [maxSupply, setMaxSupply] = useState<number>(5000); // Default to 5000 as per contract
   const [mintedCount, setMintedCount] = useState<number>(0);
   const [mintingEnabled, setMintingEnabled] = useState<boolean>(false);
+  const [mintStartTimestamp, setMintStartTimestamp] = useState<number>(0);
   const [consecutiveCheckins, setConsecutiveCheckins] = useState(0);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [isCheckingIn, setIsCheckingIn] = useState(false);
@@ -396,9 +404,14 @@ function App() {
           try {
             const mintingEnabledResult = await nftContract.mintingEnabled();
             setMintingEnabled(mintingEnabledResult);
+            
+            // Get mint start timestamp
+            const mintStartTimestampResult = await nftContract.mintStartTimestamp();
+            setMintStartTimestamp(Number(mintStartTimestampResult));
           } catch (error) {
             console.error('Error checking if minting is enabled:', error);
             setMintingEnabled(false);
+            setMintStartTimestamp(0);
           }
         } catch (contractError) {
           console.error('NFT contract error:', contractError);
@@ -891,6 +904,17 @@ function App() {
         return;
       }
       
+      // Check if mint start time has been reached
+      const mintStartTimestampResult = await contract.mintStartTimestamp();
+      const mintStartTime = Number(mintStartTimestampResult);
+      const currentTime = Math.floor(Date.now() / 1000);
+      
+      if (mintStartTime > 0 && currentTime < mintStartTime) {
+        setError(t('nft.errors.mintTimeNotReached'));
+        setIsMinting(false);
+        return;
+      }
+      
       // Check if minting is still available
       const totalMinted = await contract.mintedCount();
       const maxSupplyValue = await contract.MAX_SUPPLY();
@@ -950,7 +974,74 @@ function App() {
 
   const isCorrectNetwork = currentNetwork === BSC_NETWORK.chainId;
   const isSoldOut = mintedCount >= maxSupply;
-  const isMintingAvailable = !hasMinted && isContractAvailable && isCorrectNetwork && !isSoldOut && mintingEnabled;
+  
+  // Check if minting is available based on timestamp
+  const isMintTimeReached = useCallback(() => {
+    if (mintStartTimestamp === 0) return false;
+    const currentTime = Math.floor(Date.now() / 1000);
+    return currentTime >= mintStartTimestamp;
+  }, [mintStartTimestamp]);
+  
+  // Calculate time remaining until mint starts
+  const getTimeRemainingForMint = useCallback(() => {
+    if (mintStartTimestamp === 0 || isMintTimeReached()) return null;
+    
+    const currentTime = Math.floor(Date.now() / 1000);
+    const timeRemaining = mintStartTimestamp - currentTime;
+    
+    if (timeRemaining <= 0) return null;
+    
+    const days = Math.floor(timeRemaining / 86400);
+    const hours = Math.floor((timeRemaining % 86400) / 3600);
+    const minutes = Math.floor((timeRemaining % 3600) / 60);
+    const seconds = timeRemaining % 60;
+    
+    return { days, hours, minutes, seconds };
+  }, [mintStartTimestamp, isMintTimeReached]);
+  
+  // State to hold formatted countdown
+  const [mintCountdown, setMintCountdown] = useState<string | null>(null);
+  
+  // Update countdown timer
+  useEffect(() => {
+    if (!mintingEnabled || mintStartTimestamp === 0 || isMintTimeReached()) {
+      setMintCountdown(null);
+      return;
+    }
+    
+    const updateCountdown = () => {
+      const timeRemaining = getTimeRemainingForMint();
+      if (!timeRemaining) {
+        setMintCountdown(null);
+        return;
+      }
+      
+      const { days, hours, minutes, seconds } = timeRemaining;
+      let countdownText = '';
+      
+      if (days > 0) {
+        countdownText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+      } else if (hours > 0) {
+        countdownText = `${hours}h ${minutes}m ${seconds}s`;
+      } else if (minutes > 0) {
+        countdownText = `${minutes}m ${seconds}s`;
+      } else {
+        countdownText = `${seconds}s`;
+      }
+      
+      setMintCountdown(countdownText);
+    };
+    
+    // Update immediately
+    updateCountdown();
+    
+    // Then update every second
+    const interval = setInterval(updateCountdown, 1000);
+    
+    return () => clearInterval(interval);
+  }, [mintingEnabled, mintStartTimestamp, isMintTimeReached, getTimeRemainingForMint]);
+  
+  const isMintingAvailable = !hasMinted && isContractAvailable && isCorrectNetwork && !isSoldOut && mintingEnabled && (mintStartTimestamp === 0 || isMintTimeReached());
 
   const NFTPreview = () => {
     const displayConsecutiveCheckins = isConnected ? consecutiveCheckins : 0;
@@ -1286,6 +1377,16 @@ function App() {
                       {mintingEnabled ? t('nft.mint.mintingEnabled') : t('nft.mint.mintingDisabled')}
                     </span>
                   </div>
+                  {mintStartTimestamp > 0 && (
+                    <div className="flex justify-between items-center py-3 border-b border-[#1d1d1d]">
+                      <span className="text-[#94a3b8]">{t('nft.mint.mintStartTime')}</span>
+                      <span className="font-semibold">
+                        {isMintTimeReached() 
+                          ? t('nft.mint.mintStarted')
+                          : new Date(mintStartTimestamp * 1000).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
                   {!isCorrectNetwork && (
                     <div className="flex items-center justify-between text-yellow-500">
                       <span>{t('nft.mint.switchNetwork')}</span>
@@ -1320,9 +1421,11 @@ function App() {
                           ? t('nft.mint.soldOut')
                           : !mintingEnabled
                             ? t('nft.mint.mintingDisabled')
-                            : isMinting 
-                              ? t('nft.mint.minting')
-                              : t('nft.mint.mintNFT')}
+                            : mintingEnabled && mintStartTimestamp > 0 && !isMintTimeReached()
+                              ? t('nft.mint.mintStartsIn', { time: mintCountdown || '...' })
+                              : isMinting 
+                                ? t('nft.mint.minting')
+                                : t('nft.mint.mintNFT')}
                 </button>
 
                 {lastCheckIn && (

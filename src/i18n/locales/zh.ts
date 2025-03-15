@@ -63,6 +63,11 @@ export default {
       mintingStatus: '铸造开关',
       mintingEnabled: '已开启',
       mintingDisabled: '已关闭',
+      mintStartTime: '铸造开始时间',
+      mintStarted: '已开始',
+      mintStartsIn: '{{time}} 后开始',
+      mintStartsAt: '开始于',
+      mintCountdownTitle: '铸造倒计时',
       switchNetwork: '请切换到 BSC 网络',
       switchButton: '切换网络',
       connectFirst: '请先连接钱包',
@@ -86,7 +91,8 @@ export default {
       notDeployed: 'NFT 合约未部署到当前网络',
       serverError: '服务器错误',
       soldOut: 'NFT 已全部铸造完毕',
-      mintingDisabled: '铸造功能当前已关闭'
+      mintingDisabled: '铸造功能当前已关闭',
+      mintTimeNotReached: '铸造时间尚未到达'
     }
   }
 };

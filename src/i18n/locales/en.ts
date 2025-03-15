@@ -63,6 +63,11 @@ export default {
       mintingStatus: 'Minting Status',
       mintingEnabled: 'Enabled',
       mintingDisabled: 'Disabled',
+      mintStartTime: 'Mint Start Time',
+      mintStarted: 'Started',
+      mintStartsIn: 'Starts in {{time}}',
+      mintStartsAt: 'Starts at',
+      mintCountdownTitle: 'Mint Countdown',
       switchNetwork: 'Please switch to BSC Network',
       switchButton: 'Switch Network',
       connectFirst: 'Connect Wallet First',
@@ -86,7 +91,8 @@ export default {
       notDeployed: 'NFT contract not deployed to current network',
       serverError: 'Server error',
       soldOut: 'All NFTs have been minted',
-      mintingDisabled: 'Minting is currently disabled'
+      mintingDisabled: 'Minting is currently disabled',
+      mintTimeNotReached: 'Mint time has not been reached yet'
     }
   }
 };
