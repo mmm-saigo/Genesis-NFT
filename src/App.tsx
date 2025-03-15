@@ -254,7 +254,7 @@ function App() {
   const [isContractAvailable, setIsContractAvailable] = useState(false);
   const [isWhitelisted, setIsWhitelisted] = useState(false);
   const [hasMinted, setHasMinted] = useState(false);
-  const [mintPrice, setMintPrice] = useState<string>('0');
+  const [mintPrice, setMintPrice] = useState<string>('0.015');
   const [maxSupply, setMaxSupply] = useState<number>(5000); // Default to 5000 as per contract
   const [mintedCount, setMintedCount] = useState<number>(0);
   const [mintingEnabled, setMintingEnabled] = useState<boolean>(false);
