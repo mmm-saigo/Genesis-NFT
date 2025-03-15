@@ -57,6 +57,7 @@ export default {
       whitelisted: 'Whitelisted',
       notWhitelisted: 'Not Whitelisted',
       whitelistAppeal: 'Submit appeal for whitelist',
+      viewMyNFT: 'View My NFT',
       mintStatus: 'Mint Status',
       minted: 'Minted',
       notMinted: 'Not Minted',
@@ -94,6 +95,20 @@ export default {
       soldOut: 'All NFTs have been minted',
       mintingDisabled: 'Minting is currently disabled',
       mintTimeNotReached: 'Mint time has not been reached yet'
+    },
+    view: {
+      backToHome: 'Back to Home',
+      error: 'Error',
+      noAddressProvided: 'No wallet address provided',
+      noWalletDetected: 'No wallet detected. Please install MetaMask or OKX Wallet.',
+      noNFTsFound: 'No NFTs found for this address',
+      errorFetchingData: 'Error fetching NFT data. Please try again later.',
+      description: 'Description',
+      attributes: 'Attributes',
+      details: 'Details',
+      contract: 'Contract',
+      owner: 'Owner',
+      blockchain: 'Blockchain'
     }
   }
 };

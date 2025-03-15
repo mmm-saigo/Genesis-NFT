@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserProvider, Contract, parseEther, Signer, formatEther } from 'ethers';
 import { Wallet, LogOut, CheckCircle, Coins, ChevronRight, ChevronDown, Github, Twitter, Mail, ExternalLink } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 // 为OKX钱包添加TypeScript声明
 declare global {
@@ -119,6 +120,7 @@ const NFT_CONTRACT_ABI = [
 ];
 
 const NFT_CONTRACT_ADDRESS = "0xd3F43706349B2a3dCDd0D4A5aD67626180388871";//主网NFT合约
+// const NFT_CONTRACT_ADDRESS = "0xb0f0128a327ce0710a9f5b9e36e16d5b438fdddd";//测试网NFT合约
 const DAILY_CHECKIN_CONTRACT_ADDRESS = "0x6813d9dd411AaB8934643049C267A6E0F3d5bD3d";//主网每日签到合约
 const CHECKIN_API_URL = "https://checkin.saigo.dev/api/check-in-data";
 
@@ -1348,6 +1350,20 @@ function App() {
                       {isWhitelisted ? t('nft.mint.whitelisted') : t('nft.mint.notWhitelisted')}
                     </span>
                   </div>
+                  
+                  {/* View My NFT button - only show if user has minted */}
+                  {hasMinted && (
+                    <div className="text-right">
+                      <Link 
+                        to={`/nft-view?address=${address}`}
+                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center justify-end gap-1"
+                      >
+                        <span>{t('nft.mint.viewMyNFT')}</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  )}
+                                    
                   <div className="flex justify-between items-center py-3 border-b border-[#1d1d1d]">
                     <span className="text-[#94a3b8]">{t('nft.mint.mintStatus')}</span>
                     <span className={`font-semibold ${hasMinted ? 'text-green-400' : ''}`}>

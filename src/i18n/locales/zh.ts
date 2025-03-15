@@ -57,6 +57,7 @@ export default {
       whitelisted: '已在白名单',
       notWhitelisted: '未在白名单',
       whitelistAppeal: '提交白名单申请',
+      viewMyNFT: '查看我的NFT',
       mintStatus: '铸造状态',
       minted: '已铸造',
       notMinted: '未铸造',
@@ -94,6 +95,20 @@ export default {
       soldOut: 'NFT 已全部铸造完毕',
       mintingDisabled: '铸造功能当前已关闭',
       mintTimeNotReached: '铸造时间尚未到达'
+    },
+    view: {
+      backToHome: '返回首页',
+      error: '错误',
+      noAddressProvided: '未提供钱包地址',
+      noWalletDetected: '未检测到钱包。请安装 MetaMask 或 OKX 钱包。',
+      noNFTsFound: '该地址未找到 NFT',
+      errorFetchingData: '获取 NFT 数据出错。请稍后再试。',
+      description: '描述',
+      attributes: '属性',
+      details: '详情',
+      contract: '合约',
+      owner: '拥有者',
+      blockchain: '区块链'
     }
   }
 };
