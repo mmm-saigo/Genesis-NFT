@@ -14,9 +14,9 @@ const NFT_CONTRACT_ABI = [
     "type": "function"
   },
   {
-    "inputs": [{"name": "owner", "type": "address"}],
-    "name": "tokensOfOwner",
-    "outputs": [{"name": "", "type": "uint256[]"}],
+    "inputs": [{"name": "owner", "type": "address"}, {"name": "index", "type": "uint256"}],
+    "name": "tokenOfOwnerByIndex",
+    "outputs": [{"name": "", "type": "uint256"}],
     "stateMutability": "view",
     "type": "function"
   },
@@ -60,6 +60,8 @@ const NFTView: React.FC = () => {
         return;
       }
 
+      console.log("ready to fetch NFT data for address: " + address);
+
       try {
         // Check if window.ethereum is available
         if (!window.ethereum) {
@@ -72,36 +74,52 @@ const NFTView: React.FC = () => {
         const nftContract = new Contract(NFT_CONTRACT_ADDRESS, NFT_CONTRACT_ABI, provider);
 
         // Get token IDs owned by the address
-        let tokenIds;
+        let firstTokenId = null;
         try {
-          // Try tokensOfOwner first (if implemented)
-          tokenIds = await nftContract.tokensOfOwner(address);
-        } catch (e) {
-          // Fallback: Get balance and then query each token
-        //   const balance = await nftContract.balanceOf(address);
-        //   if (Number(balance) === 0) {
+          // Get balance of NFTs owned by this address
+          const balance = await nftContract.balanceOf(address);
+          console.log("token balance: " + balance);
+          
+          if (Number(balance) === 0) {
             setError(t('nft.view.noNFTsFound'));
             setLoading(false);
             return;
-        //   }
+          }
           
-          // For simplicity, we're just showing the first NFT
-          // In a real app, you might want to show all NFTs or let the user select
-        //   setTokenId(0); // Assuming tokenId 0 for simplicity
+          // TODO:仅显示第一个 NFT
+          // Get the first token ID (index 0)
+          firstTokenId = await nftContract.tokenOfOwnerByIndex(address, 0);
+          setTokenId(Number(firstTokenId));
+          console.log("firstTokenId: " + firstTokenId);
+        } catch (e) {
+          console.error("Error fetching NFT tokens:", e);
+          setError(t('nft.view.errorFetchingTokens'));
+          setLoading(false);
+          return;
         }
 
-        //  TODO:仅显示第一个
-        if (tokenIds && tokenIds.length > 0) {
-          // For simplicity, we're just showing the first NFT
-          setTokenId(Number(tokenIds[0]));
-        } else if (!tokenId) {
+        // Check if firstTokenId is null or undefined, not if it's falsy (0 is a valid token ID)
+        if (firstTokenId === null || firstTokenId === undefined) {
+          setError(t('nft.view.noNFTsFound'));
+          setLoading(false);
+          console.log("noNFTsFound");   
+          return;
+        }
+
+        // Use firstTokenId if available, otherwise use the state tokenId
+        const tokenIdToUse = firstTokenId !== null ? Number(firstTokenId) : tokenId;
+        console.log("tokenId to use: " + tokenIdToUse);
+
+        if (tokenIdToUse === null || tokenIdToUse === undefined) {
           setError(t('nft.view.noNFTsFound'));
           setLoading(false);
           return;
         }
 
         // Get token URI
-        const tokenURI = await nftContract.tokenURI(tokenId || 0);
+        const tokenURI = await nftContract.tokenURI(tokenIdToUse);
+
+        console.log("tokenURI: " + tokenURI);
         
         // Fetch metadata from the token URI
         const response = await fetch(tokenURI);
@@ -110,6 +128,7 @@ const NFTView: React.FC = () => {
         }
         
         const metadataJson = await response.json();
+        console.log("metadataJson: " + metadataJson.name);
         setMetadata(metadataJson);
         setLoading(false);
       } catch (err) {
@@ -120,7 +139,7 @@ const NFTView: React.FC = () => {
     };
 
     fetchNFTData();
-  }, [address, t, tokenId]);
+  }, [address, t]);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -192,9 +211,9 @@ const NFTView: React.FC = () => {
               </h1>
               
               <div className="flex items-center gap-2 mb-6">
-                <span className="text-sm text-gray-400">Token ID: {tokenId}</span>
+                <span className="text-sm text-gray-400">Token ID: {tokenId !== null && tokenId !== undefined ? tokenId : ''}</span>
                 <button 
-                  onClick={() => copyToClipboard(String(tokenId))}
+                  onClick={() => copyToClipboard(String(tokenId !== null && tokenId !== undefined ? tokenId : ''))}
                   className="text-gray-400 hover:text-blue-400"
                 >
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
