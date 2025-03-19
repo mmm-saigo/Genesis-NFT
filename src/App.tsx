@@ -1331,7 +1331,7 @@ function App() {
                       {isWhitelisted ? t('nft.mint.free') : `${mintPrice} BNB`}
                     </span>
                   </div>
-                  {!isWhitelisted && isConnected && (
+                  {/* {!isWhitelisted && isConnected && (
                     <div className="text-right">
                       <a 
                         href="https://docs.google.com/forms/d/e/1FAIpQLScRWYX2aQOrL2jaKqhebzDXjOupx8f9HKlxp6bP32Q_JkfgRg/viewform" 
@@ -1343,7 +1343,7 @@ function App() {
                         <ExternalLink className="w-3 h-3" />
                       </a>
                     </div>
-                  )}
+                  )} */}
                   <div className="flex justify-between items-center py-3 border-b border-[#1d1d1d]">
                     <span className="text-[#94a3b8]">{t('nft.mint.whitelistStatus')}</span>
                     <span className={`font-semibold ${isWhitelisted ? 'text-green-400' : 'text-yellow-400'}`}>
